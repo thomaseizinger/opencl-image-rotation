@@ -13,8 +13,8 @@ public class KernelTest {
 
         final float[] metaData = {300, 300, (float) Math.cos(Math.toRadians(180)), (float) Math.sin(Math.toRadians(180))};
 
-        int iX = 65;
-        int iY = 25;
+        int x1 = 65;
+        int y1 = 25;
 
         int x0 = (int) Math.floor(metaData[0] / 2);
         int y0 = (int) Math.floor(metaData[1] / 2);
@@ -23,13 +23,13 @@ public class KernelTest {
         final float sin = metaData[3];
 
 
-        float xPosActual = (float) (iX - x0) * cos - (float) (iY - y0) * sin + x0 - 1;
-        float yPosActual = (float) (iX - x0) * sin + (float) (iY - y0) * cos + y0 - 1;
+        float xPos = cos * (x1 - x0) - sin * (y1 - y0) + x0;
+        float yPos = sin * (x1 - x0) + cos * (y1 - y0) + y0;
 
-        float xPosExpected = 300 - 65 - 1;
-        float yPosExpected = 300 - 25 - 1;
+        float xPosExpected = 300 - 65;
+        float yPosExpected = 300 - 25;
 
-        Assert.assertEquals(xPosExpected, xPosActual, 0.1);
-        Assert.assertEquals(yPosExpected, yPosActual, 0.1);
+        Assert.assertEquals(xPosExpected, xPos, 0.1);
+        Assert.assertEquals(yPosExpected, yPos, 0.1);
     }
 }

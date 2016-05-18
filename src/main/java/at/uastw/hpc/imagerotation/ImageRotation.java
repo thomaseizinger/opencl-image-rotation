@@ -1,6 +1,5 @@
 package at.uastw.hpc.imagerotation;
 
-import static com.github.thomaseizinger.oocl.CLProgram.BuildOption;
 import static org.jocl.CL.CL_MEM_COPY_HOST_PTR;
 import static org.jocl.CL.CL_MEM_READ_ONLY;
 
@@ -44,29 +43,29 @@ public class ImageRotation {
         final int width = image.getWidth();
         final int height = image.getHeight();
 
-        final int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
+        final int[] originalPixels = image.getRGB(0, 0, width, height, null, 0, width);
         final float[] metadata = new float[] {width, height, cos(degrees), sin(degrees)};
 
-        final int[] output = new int[pixels.length];
+        final int[] pixelsOfRotatedImage = new int[originalPixels.length];
 
         try (CLContext context = device.createContext()) {
-            try (CLKernel imgRotate = context.createKernel(new File(kernelURI), "imgRotate", BuildOption.EMPTY)) {
+            try (CLKernel imgRotate = context.createKernel(new File(kernelURI), "imgRotate")) {
                 try (
-                        CLMemory<int[]> pixelBuffer = context.createBuffer(BUFFER_FLAGS, pixels);
-                        CLMemory<int[]> outputBuffer = context.createBuffer(BUFFER_FLAGS, output);
+                        CLMemory<int[]> bufferOfOriginalPixels = context.createBuffer(BUFFER_FLAGS, originalPixels);
+                        CLMemory<int[]> bufferForPixelsOfRotatedImage = context.createBuffer(BUFFER_FLAGS, pixelsOfRotatedImage);
                         CLMemory<float[]> metadataBuffer = context.createBuffer(BUFFER_FLAGS, metadata)
                 ) {
-                    imgRotate.setArguments(pixelBuffer, outputBuffer, metadataBuffer);
+                    imgRotate.setArguments(bufferOfOriginalPixels, bufferForPixelsOfRotatedImage, metadataBuffer);
 
                     final CLCommandQueue commandQueue = context.createCommandQueue();
 
                     commandQueue.execute(imgRotate, 2, CLRange.of(width, height), CLRange.of(1, 1));
                     commandQueue.finish();
 
-                    commandQueue.readBuffer(outputBuffer);
+                    commandQueue.readBuffer(bufferForPixelsOfRotatedImage);
 
                     final BufferedImage resultImage = new BufferedImage(width, height, image.getType());
-                    resultImage.setRGB(0, 0, width, height, outputBuffer.getData(), 0, width);
+                    resultImage.setRGB(0, 0, width, height, bufferForPixelsOfRotatedImage.getData(), 0, width);
 
                     return resultImage;
                 }
@@ -74,11 +73,11 @@ public class ImageRotation {
         }
     }
 
-    private float sin(float degrees) {
+    private static float sin(float degrees) {
         return (float) Math.sin(Math.toRadians(degrees));
     }
 
-    private float cos(float degrees) {
+    private static float cos(float degrees) {
         return (float) Math.cos(Math.toRadians(degrees));
     }
 

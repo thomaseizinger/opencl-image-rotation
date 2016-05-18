@@ -1,5 +1,6 @@
 package at.uastw.hpc.imagerotation;
 
+import static com.github.thomaseizinger.oocl.CLProgram.BuildOption;
 import static org.jocl.CL.CL_MEM_COPY_HOST_PTR;
 import static org.jocl.CL.CL_MEM_READ_ONLY;
 
@@ -14,7 +15,6 @@ import com.github.thomaseizinger.oocl.CLDevice;
 import com.github.thomaseizinger.oocl.CLKernel;
 import com.github.thomaseizinger.oocl.CLMemory;
 import com.github.thomaseizinger.oocl.CLPlatform;
-import com.github.thomaseizinger.oocl.CLProgram;
 import com.github.thomaseizinger.oocl.CLRange;
 
 public class ImageRotation {
@@ -39,12 +39,10 @@ public class ImageRotation {
 
     public BufferedImage rotate(BufferedImage image, float degrees) {
         try (CLContext context = device.createContext()) {
-            try (CLKernel imgRotate = context.createKernel(new File(kernelURI), "imgRotate", CLProgram.BuildOption
-                    .EMPTY)) {
+            try (CLKernel imgRotate = context.createKernel(new File(kernelURI), "imgRotate", BuildOption.EMPTY)) {
 
                 final int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
                 final int[] output = new int[pixels.length];
-
                 final float[] metadata = new float[] {
                         image.getWidth(),
                         image.getHeight(),
@@ -52,9 +50,9 @@ public class ImageRotation {
                         (float) Math.sin(Math.toRadians(degrees))
                 };
 
-                final CLMemory<int[]> pixelBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, pixels);
-                final CLMemory<int[]> outputBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, output);
-                final CLMemory<float[]> metadataBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, metadata);
+                CLMemory<int[]> pixelBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, pixels);
+                CLMemory<int[]> outputBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, output);
+                CLMemory<float[]> metadataBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, metadata);
 
                 imgRotate.setArguments(pixelBuffer, outputBuffer, metadataBuffer);
 

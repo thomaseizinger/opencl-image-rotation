@@ -13,5 +13,7 @@ __kernel void imgRotate(__global float * src, __global float * dest, __global fl
     float xPos = ( (float) (iX - x0)) * metaData[2] - ( (float) (iY - y0) * metaData[3]) + x0;
     float yPos = ( (float) (iY - y0)) * metaData[2] + ( (float) (iX - x0) * metaData[3]) + y0;
 
-    dest[iY * (int)metaData[0] + iX] = src[ (int) (floor(yPos * (int)metaData[0] + xPos)) ];
+    if (xPos >= 0 && yPos >= 0 && xPos < metaData[0] && yPos < metaData[1]) {
+        dest[iY * (int)metaData[0] + iX] = src[ (int) (floor(yPos * (int)metaData[0] + xPos)) ];
+    }
 }

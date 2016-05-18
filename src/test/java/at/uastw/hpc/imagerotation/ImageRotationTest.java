@@ -24,9 +24,9 @@ public class ImageRotationTest {
     @Test
     public void shouldRotateImageBy90Degrees() throws Exception {
         final BufferedImage lena = ImageIO.read(ImageRotationTest.class.getResource("/lena.bmp"));
-        final BufferedImage expected = ImageIO.read(ImageRotationTest.class.getResource("/lena_rotated_180.bmp"));
+        final BufferedImage expected = ImageIO.read(ImageRotationTest.class.getResource("/lena_rotated_15.bmp"));
 
-        final BufferedImage result = sut.rotate(lena, 180);
+        final BufferedImage result = sut.rotate(lena, -15);
 
         Assert.assertThat(result, similiarTo(expected, 99));
     }

@@ -22,58 +22,64 @@ public class ImageRotation {
     private final CLDevice device;
     private final URI kernelURI;
 
+    private static final long BUFFER_FLAGS = CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR;
+
     private ImageRotation(CLDevice device, URI kernelURI) {
         this.device = device;
         this.kernelURI = kernelURI;
     }
 
-    public static ImageRotation createFromClasspathKernel(String location) {
+    public static ImageRotation create() {
 
         final CLPlatform platform = CLPlatform.getFirst().orElseThrow(IllegalStateException::new);
         final CLDevice device = platform.getDevice(CLDevice.DeviceType.GPU).orElseThrow(IllegalStateException::new);
 
-        final URI kernelURI = getKernelURI(location);
+        final URI kernelURI = getKernelURI("/imgRotate.cl");
 
         return new ImageRotation(device, kernelURI);
     }
 
-    public BufferedImage rotate(BufferedImage image, float degrees) {
+    public BufferedImage rotate(BufferedImage image, int degrees) {
+
+        final int width = image.getWidth();
+        final int height = image.getHeight();
+
+        final int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
+        final float[] metadata = new float[] {width, height, cos(degrees), sin(degrees)};
+
+        final int[] output = new int[pixels.length];
+
         try (CLContext context = device.createContext()) {
             try (CLKernel imgRotate = context.createKernel(new File(kernelURI), "imgRotate", BuildOption.EMPTY)) {
+                try (
+                        CLMemory<int[]> pixelBuffer = context.createBuffer(BUFFER_FLAGS, pixels);
+                        CLMemory<int[]> outputBuffer = context.createBuffer(BUFFER_FLAGS, output);
+                        CLMemory<float[]> metadataBuffer = context.createBuffer(BUFFER_FLAGS, metadata)
+                ) {
+                    imgRotate.setArguments(pixelBuffer, outputBuffer, metadataBuffer);
 
-                final int[] pixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-                final int[] output = new int[pixels.length];
-                final float[] metadata = new float[] {
-                        image.getWidth(),
-                        image.getHeight(),
-                        (float) Math.cos(Math.toRadians(degrees)),
-                        (float) Math.sin(Math.toRadians(degrees))
-                };
+                    final CLCommandQueue commandQueue = context.createCommandQueue();
 
-                CLMemory<int[]> pixelBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, pixels);
-                CLMemory<int[]> outputBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, output);
-                CLMemory<float[]> metadataBuffer = context.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, metadata);
+                    commandQueue.execute(imgRotate, 2, CLRange.of(width, height), CLRange.of(1, 1));
+                    commandQueue.finish();
 
-                imgRotate.setArguments(pixelBuffer, outputBuffer, metadataBuffer);
+                    commandQueue.readBuffer(outputBuffer);
 
-                final CLCommandQueue commandQueue = context.createCommandQueue();
+                    final BufferedImage resultImage = new BufferedImage(width, height, image.getType());
+                    resultImage.setRGB(0, 0, width, height, outputBuffer.getData(), 0, width);
 
-                final CLRange globalWorkSize = CLRange.of(
-                        image.getWidth(),
-                        image.getHeight()
-                );
-
-                commandQueue.execute(imgRotate, 2, globalWorkSize, CLRange.of(1, 1));
-                commandQueue.finish();
-
-                commandQueue.readBuffer(outputBuffer);
-
-                final BufferedImage resultImage = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
-                resultImage.setRGB(0, 0, image.getWidth(), image.getHeight(), outputBuffer.getData(), 0, image.getWidth());
-
-                return resultImage;
+                    return resultImage;
+                }
             }
         }
+    }
+
+    private float sin(float degrees) {
+        return (float) Math.sin(Math.toRadians(degrees));
+    }
+
+    private float cos(float degrees) {
+        return (float) Math.cos(Math.toRadians(degrees));
     }
 
     private static URI getKernelURI(String location) {

@@ -15,8 +15,6 @@ __kernel void imgRotate(__global int * src, __global int * dest, __global float 
     float yPos = sin * (x1 - x0) + cos * (y1 - y0) + y0;
 
     if (xPos >= 0 && yPos >= 0 && xPos < width && yPos < height) {
-     //   printf("x1: %d, y1: %d -> xPos: %f, yPos: %f\n", x1, y1, xPos, yPos);
-
         dest[y1 * width + x1] = src[  (int)(floor(yPos) * width + floor(xPos)) ];
     }
 }
